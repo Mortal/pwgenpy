@@ -3,11 +3,39 @@ import argparse
 import hashlib
 import os
 import random
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Sequence, Tuple
 
+
+CONSONANT = 0x0001
+VOWEL = 0x0002
+DIPTHONG = 0x0004
+NOT_FIRST = 0x0008
+
+language_models = {
+    "en": {
+        **{c: VOWEL for c in "aeiou"},
+        **{c: VOWEL | DIPTHONG for c in "ae ah ai ee ei ie oh oo".split()},
+        **{c: CONSONANT for c in "bcdfghjklmnprstvwxyz"},
+        **{c: CONSONANT | DIPTHONG for c in "ch ph qu sh th".split()},
+        **{c: CONSONANT | DIPTHONG | NOT_FIRST for c in "gh ng".split()},
+    },
+    "da": {
+        **{c: VOWEL for c in "aeiouy"},
+        **{c: VOWEL | DIPTHONG for c in "aj ej ar av er en et ig or".split()},
+        **{c: CONSONANT for c in "bcdfghjklmnprstv"},
+        **{c: CONSONANT | DIPTHONG for c in "st sk fl fr dr pr tr".split()},
+        **{c: CONSONANT | DIPTHONG | NOT_FIRST for c in "nd ng ms ns".split()},
+    },
+}
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--alt-phonics", "-a", action="store_true")
+parser.add_argument(
+    "--language",
+    "-l",
+    help="Phoneme language model",
+    choices=language_models.keys(),
+    default="en",
+)
 parser.add_argument(
     "--capitalize",
     "-c",
@@ -86,6 +114,8 @@ def main() -> None:
     rng = random.Random()
     gen.randrange = rng.randrange
 
+    gen.elements = tuple(language_models[args.language].items())
+
     if os.isatty(1):
         do_columns = True
 
@@ -154,12 +184,6 @@ def pw_sha1_init(filename, rng) -> None:
     rng.seed(h.digest())
 
 
-CONSONANT = 0x0001
-VOWEL = 0x0002
-DIPTHONG = 0x0004
-NOT_FIRST = 0x0008
-
-
 class Pwgen:
 
     size = 8
@@ -169,13 +193,7 @@ class Pwgen:
     def __init__(self) -> None:
         self.randrange: Callable[[int], int]
 
-    elements = {
-        **{c: VOWEL for c in "aeiou"},
-        **{c: VOWEL | DIPTHONG for c in "ae ah ai ee ei ie oh oo".split()},
-        **{c: CONSONANT for c in "bcdfghjklmnprstvwxyz"},
-        **{c: CONSONANT | DIPTHONG for c in "ch ph qu sh th".split()},
-        **{c: CONSONANT | DIPTHONG | NOT_FIRST for c in "gh ng".split()},
-    }.items()
+    elements: Sequence[Tuple[str, int]] = tuple(language_models["en"].items())
 
     pw_digits = "0123456789"
     pw_uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
